@@ -44,24 +44,29 @@ Task Supervisor ◄────────────────────�
 
 1. Clone the repository:
 
-```bash
+```
 git clone https://github.com/suryansh111000/agentic-ai-platform.git
 cd agentic-ai-platform
+```
 
-
-Install dependencies:
+2. Install dependencies:
+```
 pip install -r requirements.txt
+```
 
-For running the App
+3. For running the App
+```
 python app.py
 Open the local web UI in your browser (usually http://127.0.0.1:7860)
+```
 
-Contributing
+4. Contributing
 
-Contributions are welcome!
+Contributions are welcome! 🎉
+```
 Fork the repo
 Create a new branch (git checkout -b feature-name)
 Commit your changes (git commit -m "Add feature")
 Push to branch (git push origin feature-name)
 Open a Pull Request
-
+```
