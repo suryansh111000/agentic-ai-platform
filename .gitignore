@@ -1,0 +1,26 @@
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Hugging Face model cache (optional)
+# cache/ may be large; skip if you want
+# ~/.cache/huggingface
+
+# OS files
+.DS_Store
+Thumbs.db

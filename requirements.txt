@@ -1,0 +1,7 @@
+pydantic
+fastapi
+transformers>=4.34.0
+torch>=2.1.0
+accelerate>=0.22.0
+sentencepiece
+protobuf>=4.23.0

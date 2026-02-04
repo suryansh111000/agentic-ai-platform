@@ -1,0 +1,35 @@
+agentic-ai-platform/
+│
+├── agents/
+|   ├── __init__.py
+│   ├── planner.py
+│   ├── executor.py
+│   ├── critic.py
+│   ├── reporter.py
+│
+├── workflows/
+│   └── task_flow.py
+│
+├── memory/
+│   └── state_manager.py
+│
+├── api/
+│   └── main.py
+│
+├── llm/
+│   └── __init__.py
+│   └── hf_llama_client__.py
+|
+├── prompts/
+│   ├── planner_prompt.txt
+│   ├── critic_prompt.txt
+│
+├── schemas/
+│   └── __init__.py
+│   └── task_plan.py
+│   └── task_status.py
+│   └── task.py
+│
+├── requirements.txt
+├── test_planner.py
+└── README.md

@@ -1,0 +1,5 @@
+- Windows 11
+- VS Code
+- venv location: D:\ml_envs
+- HF_HOME = D:\hf_cache
+- Project: agentic AI (transformers, torch)
