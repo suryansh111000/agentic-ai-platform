@@ -5,6 +5,7 @@ from schemas.critic_verdict import CriticVerdict
 from schemas.task_status import TaskStatus
 from llm.hf_llama_client import call_llm
 import json
+import re
 
 
 class CriticAgent:
@@ -29,6 +30,41 @@ class CriticAgent:
             return [] if value.strip() == "" else [value.strip()]
         return []
 
+    def _extract_json(self, text: str):
+        # Remove markdown code fences
+        text = re.sub(r"```(?:json)?", "", text)
+
+        start = text.find("{")
+        if start == -1:
+            raise ValueError("No JSON object found in LLM output")
+
+        brace_count = 0
+        for i in range(start, len(text)):
+            if text[i] == "{":
+                brace_count += 1
+            elif text[i] == "}":
+                brace_count -= 1
+                if brace_count == 0:
+                    json_str = text[start:i+1]
+                    return self._safe_json_load(json_str)
+
+        raise ValueError("Unbalanced JSON braces")
+
+
+    def _safe_json_load(self, json_str: str):
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            fixed = json_str
+
+            fixed = re.sub(r"'", '"', fixed)
+            fixed = re.sub(r",\s*([}\]])", r"\1", fixed)
+            fixed = fixed.replace("None", "null")
+            fixed = fixed.replace("True", "true")
+            fixed = fixed.replace("False", "false")
+
+            return json.loads(fixed)
+
     def evaluate(self, goal: str, tasks: List[Task]) -> List[CriticFeedback]:
         feedbacks: List[CriticFeedback] = []
 
@@ -39,7 +75,19 @@ class CriticAgent:
             prompt = self._build_prompt(goal, task)
             raw_output = call_llm(prompt)
 
-            parsed = json.loads(raw_output)
+            # parsed = json.loads(raw_output)
+            try:
+                parsed = self._extract_json(raw_output)
+            except Exception as e:
+                print("❌ Critic JSON parsing failed:", e)
+                print("🧾 RAW OUTPUT:\n", raw_output)
+
+                # fallback so API doesn't crash
+                parsed = {
+                    "verdict": "FAIL",
+                    "issues": ["Invalid JSON from LLM"],
+                    "suggestions": ["Retry or improve prompt"]
+                }
 
             feedbacks.append(
                 CriticFeedback(

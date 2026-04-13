@@ -61,37 +61,89 @@ class PlannerAgent:
 
             return json.loads(fixed)
 
+    def _parse_numbered_tasks(self, text: str):
+        """
+        Fallback parser for numbered task lists like:
+        1. Task one
+        2. Task two
+        """
+        tasks = []
+        lines = text.strip().split("\n")
+        task_id = 1
+
+        for line in lines:
+            line = line.strip()
+            match = re.match(r"^\d+\.\s*(.+)", line)
+            if match:
+                description = match.group(1).strip()
+                # 🔥 CLEANUP
+                description = description.strip('"').strip("'")
+                description = description.rstrip(",")
+                description = description.rstrip("]")
+                tasks.append(
+                    Task(
+                        id=task_id,
+                        description=description,
+                        status=TaskStatus.PENDING,
+                        attempts=0,
+                        result=None,
+                        error=None,
+                    )
+                )
+                task_id += 1
+
+        return tasks
+
     def plan(self, goal: str) -> TaskPlan:
-        print(f"📄 Reading prompt from: {self.prompt_file}")
+        print("🧠 Generating plan using LLM...")
+
+        # Load prompt
         with open(self.prompt_file, "r", encoding="utf-8") as f:
             template = f.read()
 
         prompt = template.replace("{{GOAL}}", goal)
-        print("📤 Sending prompt to LLM...")
 
+        # Call LLM
         raw_output = call_llm(prompt)
-        # Debug: uncomment to see raw LLM output
-        # print("RAW LLM OUTPUT:\n", raw_output)
 
-        # Parse JSON from LLM
-        data = self.extract_json(raw_output)
+        print("🧾 RAW LLM OUTPUT:\n", raw_output)
 
-        # Force defaults required by tests
-        tasks = []
-        for t in data.get("tasks", []):
-            tasks.append(
-                Task(
-                    id=t.get("id"),
-                    description=t.get("description"),
-                    status=TaskStatus.PENDING,
-                    attempts=0,
-                    result=None,
-                    error=None,
+        # Try JSON parsing
+        try:
+            parsed = self.extract_json(raw_output)
+
+            tasks_data = parsed.get("tasks", [])
+
+            tasks = []
+            for i, t in enumerate(tasks_data, start=1):
+                if isinstance(t, str):
+                    description = t
+                else:
+                    description = t.get("description", "")
+
+                tasks.append(
+                    Task(
+                        id=i,
+                        description=description,
+                        status=TaskStatus.PENDING,
+                        attempts=0,
+                        result=None,
+                        error=None,
+                    )
                 )
-            )
 
-        return TaskPlan(goal=data.get("goal", goal), tasks=tasks)
+            return TaskPlan(goal=goal, tasks=tasks)
 
+        except Exception as e:
+            print("❌ JSON parsing failed, using fallback:", e)
+
+            # Fallback: numbered list parsing
+            tasks = self._parse_numbered_tasks(raw_output)
+
+            if not tasks:
+                raise ValueError("Planner failed to generate valid tasks")
+
+            return TaskPlan(goal=goal, tasks=tasks)
 
 # Example usage
 if __name__ == "__main__":

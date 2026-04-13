@@ -1,56 +1,46 @@
-# hf_llama_client.py
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
 import os
-# -------------------------------
-# Model setup (local)
-# -------------------------------
-# print("HF_HOME =", os.environ.get("HF_HOME"))
-MODEL_ID = "LiquidAI/LFM2.5-1.2B-Instruct"
+import time
+from openai import OpenAI
 
-# print(f"➡️  Loading model '{MODEL_ID}' locally. This may take a minute...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
+# ✅ Initialize client (HF Router)
+client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=os.getenv("HF_TOKEN") or os.getenv("HF_API_TOKEN"),
+)
 
-# Automatically use GPU if available, otherwise CPU
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
-print(f"✅ Model loaded on {device}")
-
-# -------------------------------
-# call_llm function (kept same API)
-# -------------------------------
-def call_llm(prompt: str, model_id: str = MODEL_ID) -> str:
-    """
-    Sends a prompt to the local LiquidAI model and returns the assistant's generated message as a string.
-    """
-
-    messages = [
-        {"role": "user", "content": prompt}
-    ]
-
-    inputs = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        tokenize=True,
-        return_dict=True,
-        return_tensors="pt",
-    ).to(device)
+# ✅ Model (with provider)
+MODEL = "mistralai/Mistral-7B-Instruct-v0.2:featherless-ai"
 
 
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=200,
-        do_sample=False,   # REQUIRED for JSON reliability
-    )
+def call_llm(prompt: str, retries: int = 3) -> str:
+    for attempt in range(retries + 1):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.2,
+                max_tokens=400
+            )
 
-    generated_text = tokenizer.decode(
-        outputs[0][inputs["input_ids"].shape[-1]:],
-        skip_special_tokens=True
-    ).strip()
+            content = response.choices[0].message.content.strip()
 
-    print("⬅️  Response generated")
-    return generated_text
+            if content:
+                print("⬅️ Response generated")
+                return content
+            else:
+                print(f"⚠ Empty response, retrying...")
+
+        except Exception as e:
+            print(f"⚠ Attempt {attempt+1} failed: {e}")
+            time.sleep(1)
+
+    raise RuntimeError("LLM API failed after retries")
+
 
 # -------------------------------
 # Example usage
